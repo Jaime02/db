@@ -204,6 +204,10 @@ export function recordPublicationError(error: unknown): void {
  * from this call after the graphs ran. When `publish` itself throws, the queued
  * graph work is discarded, so live queries miss the commits that `publish`
  * already made: catch each commit's own failure inside `publish`.
+ *
+ * `publish` must be synchronous. The publication ends when it returns, so a
+ * commit after an `await` in it publishes on its own, and a rejected Promise is
+ * not handled as a throw. Await the source's input before this call.
  */
 export function withPublicationContext<T>(publish: () => T): T {
   if (activePublicationContext !== undefined) return publish()
