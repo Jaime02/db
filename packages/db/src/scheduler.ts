@@ -208,6 +208,10 @@ export function recordPublicationError(error: unknown): void {
  * `publish` must be synchronous. The publication ends when it returns, so a
  * commit after an `await` in it publishes on its own, and a rejected Promise is
  * not handled as a throw. Await the source's input before this call.
+ *
+ * Inside `transaction.mutate`, live-query work belongs to the transaction and
+ * publishes when `mutate` returns. A commit made in a `mutate` callback inside
+ * `publish` therefore publishes before the commits after it.
  */
 export function withPublicationContext<T>(publish: () => T): T {
   if (activePublicationContext !== undefined) return publish()

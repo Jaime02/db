@@ -182,7 +182,7 @@ The sync process follows this lifecycle:
 
 A source that syncs several Collections over one connection often receives one source state for all of them, such as one server checkpoint. Committed one by one, every live query that joins those Collections runs after each commit, over Collections that only some of the commits have reached, and can publish those intermediate results. Commit them inside one `withPublicationContext` call instead.
 
-The callback must be synchronous: the publication ends when it returns, so a commit after an `await` in it publishes on its own, and a rejected Promise is not handled as a throw. Await the source's input first, then commit inside the call:
+The callback must be synchronous: the publication ends when it returns, so a commit after an `await` in it publishes on its own, and a rejected Promise is not handled as a throw. Do not commit inside a `transaction.mutate` callback within it either: live-query work inside `mutate` belongs to the transaction and publishes when `mutate` returns, before the commits after it. Await the source's input first, then commit inside the call:
 
 ```typescript
 import { withPublicationContext } from '@tanstack/db'

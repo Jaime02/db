@@ -509,6 +509,34 @@ describe(`sync transactions of several Collections in one publication`, () => {
     expect(rows()).toEqual([{ name: `Ada`, title: `Review` }])
     subscription.unsubscribe()
   })
+
+  it(`publishes a commit made inside transaction.mutate before the commits after it`, async () => {
+    const { assignments, commitUser, commitTask, rows } =
+      await setupJoinedSources(`publication-in-mutate`)
+    const transaction = createTransaction({
+      mutationFn: async () => {},
+      autoCommit: false,
+    })
+    const published: Array<Array<string>> = []
+    const subscription = assignments.subscribeChanges((changes) =>
+      published.push(
+        changes.map(({ type, value }) => `${type} ${value.title}`),
+      ),
+    )
+
+    publicWithPublicationContext(() => {
+      transaction.mutate(() => commitUser({ id: 1, name: `Ada` }))
+      commitTask({ id: 1, userId: 1, title: `Review` })
+    })
+
+    expect(published).toEqual([
+      [`insert undefined`],
+      [`insert Review`, `delete undefined`],
+    ])
+    expect(rows()).toEqual([{ name: `Ada`, title: `Review` }])
+    subscription.unsubscribe()
+    transaction.rollback()
+  })
 })
 
 describe(`live query scheduler`, () => {
