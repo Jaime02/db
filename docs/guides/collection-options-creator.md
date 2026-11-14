@@ -180,7 +180,7 @@ The sync process follows this lifecycle:
 
 ### Committing several Collections together
 
-A source that syncs several Collections over one connection often receives one source state for all of them, such as one server checkpoint. Committed one by one, every live query that joins those Collections runs after each commit and publishes a result over Collections that only some of the commits have reached. Commit them inside one `withPublicationContext` call instead:
+A source that syncs several Collections over one connection often receives one source state for all of them, such as one server checkpoint. Committed one by one, every live query that joins those Collections runs after each commit, over Collections that only some of the commits have reached, and can publish those intermediate results. Commit them inside one `withPublicationContext` call instead:
 
 ```typescript
 import { withPublicationContext } from '@tanstack/db'
@@ -198,7 +198,7 @@ withPublicationContext(() => {
 })
 ```
 
-Live queries then run after the last commit and publish one batch. Each Collection still notifies its own change subscribers when it commits, so this is not an atomic publication across the Collections. Catch each commit's failure inside the callback: if the callback throws, the live-query work of the commits it already made is discarded, and those live queries miss them until their sources change again.
+Live queries then run after the last commit and publish one batch, with every commit that applied at once. A commit made while an optimistic transaction is persisting applies when that transaction settles, in a later publication: `commit()` returns a receipt instead of `true`, and the call does not wait for it. Each Collection still notifies its own change subscribers when it commits, so this is not an atomic publication across the Collections. Catch each commit's failure inside the callback: if the callback throws, the live-query work of the commits it already made is discarded, and those live queries miss them until their sources change again.
 
 ### Reporting failures
 

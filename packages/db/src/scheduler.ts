@@ -188,9 +188,15 @@ export function recordPublicationError(error: unknown): void {
  * A sync source that commits sync transactions to several Collections for one
  * source state, such as one server checkpoint, can commit them inside one call.
  * Every live query that observes those Collections then runs after `publish`
- * returns, with every commit applied, and publishes one batch. Committed one by
- * one, a live query that joins them runs and publishes after each commit, over
- * Collections that only some of the commits have reached.
+ * returns, with every commit that applied at once, and publishes one batch.
+ * Committed one by one, a live query that joins them runs after each commit,
+ * over Collections that only some of the commits have reached, and can publish
+ * those intermediate results.
+ *
+ * A commit that does not apply at once, because an optimistic transaction is
+ * persisting, applies when that transaction settles, in a later publication.
+ * This call does not wait for it, so live queries that read its Collection can
+ * publish without it first.
  *
  * Each Collection still applies its sync transaction and notifies its own
  * change subscribers when it commits, so this is not an atomic publication

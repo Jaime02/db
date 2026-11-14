@@ -476,6 +476,39 @@ describe(`sync transactions of several Collections in one publication`, () => {
     expect(users.size).toBe(1)
     expect(rows()).toEqual([])
   })
+
+  it(`publishes a commit held behind a persisting transaction in a later batch`, async () => {
+    const { tasks, assignments, commitUser, commitTask, rows } =
+      await setupJoinedSources(`publication-held`)
+    const persisting = createDeferred<void>()
+    const transaction = createTransaction({
+      mutationFn: () => persisting.promise,
+    })
+    transaction.mutate(() =>
+      tasks.insert({ id: 99, userId: 99, title: `optimistic` }),
+    )
+    const published: Array<Array<string>> = []
+    const subscription = assignments.subscribeChanges((changes) =>
+      published.push(
+        changes.map(({ type, value }) => `${type} ${value.title}`),
+      ),
+    )
+
+    publicWithPublicationContext(() => {
+      commitUser({ id: 1, name: `Ada` })
+      commitTask({ id: 1, userId: 1, title: `Review` })
+    })
+    expect(published).toEqual([[`insert undefined`]])
+
+    persisting.resolve()
+    await transaction.when(`settled`)
+    expect(published).toEqual([
+      [`insert undefined`],
+      [`insert Review`, `delete undefined`],
+    ])
+    expect(rows()).toEqual([{ name: `Ada`, title: `Review` }])
+    subscription.unsubscribe()
+  })
 })
 
 describe(`live query scheduler`, () => {
